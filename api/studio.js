@@ -85,7 +85,7 @@ function inspect(post,{requireImages=false}={}) {
   if(!post.title || !post.caption || !Array.isArray(post.slides) || post.slides.length!==6)bad.push("제목·캡션·6장 구성을 완성해 주세요");
   if(!post.verified)bad.push("검수 완료 체크가 필요합니다");
   if(requireImages && (!Array.isArray(post.image_urls) || post.image_urls.length!==6 || post.image_urls.some(x=>!cleanUrl(x))))bad.push("공개 JPEG 이미지 6장을 업로드해 주세요");
-  if(post.channel==="yogo" && !cleanUrl(post.landing_url))bad.push("YOGO의 검증된 HTTPS 랜딩 주소가 필요합니다");
+  if(post.channel==="yogo" && (post.disclosure_required || post.landing_url) && !cleanUrl(post.landing_url))bad.push("제휴·상품 링크가 포함된 YOGO 글에는 검증된 HTTPS 랜딩 주소가 필요합니다");
   if(post.disclosure_required && !/(광고|제휴|수수료|협찬)/.test(post.caption || ""))bad.push("제휴/광고 고지 문구가 필요합니다");
   return bad;
 }

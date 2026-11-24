@@ -2,6 +2,34 @@
 
 입는감각(@ipneun_gamgak)과 YOGO EDIT(@yogo.edit)의 6장 카드뉴스 편집·검수·예약·게시 시스템.
 
+## 매일 AI 자동 제작·예약 게시 (2026-11)
+
+YOGO Social Studio 운영판에 `api/daily-fashion.js`, `api/daily-yogo.js` 자동 생성 작업이 추가되었습니다.
+
+- 오전 9시 KST: 입는감각 6장 에디토리얼 자동 생성
+- 오전 10시 KST: YOGO EDIT 6장 구매 체크리스트 자동 생성
+- 한국시간 낮 12시 / 저녁 8시: 기존 `api/cron.js` 예약 게시 검사
+- 동일 날짜/계정은 DB 고유 인덱스로 중복 생성 방지, 게시 실패 시 자동 재시도 금지
+- AI가 에버그린 정보성 원고를 작성하고, Satori + Sharp가 1080×1350 JPEG 6장을 제작해 별도 Supabase Storage에 저장
+- 실제 사진이나 상품 사진을 합성하는 기능은 아직 없습니다. 카드뉴스는 사진 화보가 아닌 한국어 타이포그래피 기반 에디토리얼 디자인입니다.
+
+### 필요한 환경변수
+
+| Key | 현재 권장 값 | 설명 |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | **미등록 — 직접 Sensitive 등록** | AI 원고 제작용 별도 API 유료 사용 |
+| `OPENAI_TEXT_MODEL` | `gpt-4.1-mini` | 원고 생성 모델 기본값 |
+| `AUTO_GENERATION_ENABLED` | `false` (초기) | 검증 후 `true`로 전환 |
+| `AUTO_PUBLISH_ENABLED` | `false` (초기) | 검증 후 `true`로 전환 |
+| `LIVE_PUBLISH_ENABLED` | `false` (초기) | 게시 테스트 성공 후 `true`로 전환 |
+
+**서버에서 세 가지 스위치를 켜기 전까지 신규 생성 작업과 자동 게시는 시작되지 않습니다.**
+AI 키 등록 후 운영 콘솔의 **오늘의 6장 자동 생성 테스트**로 먼저 두 계정 결과를 시험하세요.
+완료된 이미지의 문자 가독성/사실관계, 6개 HTTPS JPEG URL, Meta 실제 계정 게시 성공을 반드시 확인한 후 활성화하세요.
+자동 게시 ON에서는 자동 규칙으로 검사된 정보성 게시물을 인간의 사전 검수 없이 전송하므로, 최초 테스트와 지속적 품질 모니터링이 중요합니다.
+Vercel Hobby 플랜의 cron 실행 시각은 해당 시각부터 1시간 이내로 늦어질 수 있어 정확한 정각 게시를 보장하지 않습니다.
+별도 비용 발생 가능: OpenAI API 유료 호출, Vercel 실행시간·Supabase 사용량.
+
 ## 운영 URL
 
 - 데모: https://yogo-social-studio.vercel.app/

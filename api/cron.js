@@ -13,7 +13,7 @@ async function graph(method,path,token,params={}) {
   if(!resp.ok||data.error)throw new Error("Meta "+resp.status+": "+(data.error?.message||"API 요청 실패").slice(0,180));
   return data;
 }
-async function publishCarousel(post){
+export async function publishCarousel(post){
   const accountId=metaId(post.channel),token=metaToken(post.channel);
   if(!accountId||!token)throw new Error("해당 Instagram 계정 토큰이 서버에 등록되지 않았습니다");
   const issues=inspect(post,{requireImages:true});if(issues.length)throw new Error(issues.join(" / "));
@@ -23,6 +23,18 @@ async function publishCarousel(post){
     const d=await graph("POST",accountId+"/media",token,{image_url:url,is_carousel_item:"true"});
     if(!d.id)throw new Error("Meta child container not returned");
     children.push(d.id);
+  }
+  // Wait for all JPEG child media to finish processing before composing the carousel.
+  // Do not create a parent until every child has returned FINISHED.
+  for(const child of children){
+    let ready=false;
+    for(let n=0;n<18;n++){
+      const st=await graph("GET",child,token,{fields:"status_code"});
+      if(st.status_code==="FINISHED"){ready=true;break}
+      if(["ERROR","EXPIRED"].includes(st.status_code))throw new Error("Meta child processing: "+st.status_code);
+      await sleep(1200);
+    }
+    if(!ready)throw new Error("Meta child processing timeout; inspect Instagram before retry");
   }
   const parent=await graph("POST",accountId+"/media",token,{media_type:"CAROUSEL",children:children.join(","),caption:post.caption});
   for(let n=0;n<12;n++){

@@ -1,0 +1,193 @@
+// YOGO Social Studio — server-only Supabase/Meta operations.
+// All mutations require a valid Supabase user token matching STUDIO_OWNER_ID.
+const env = (key) => process.env[key] || "";
+const base = () => env("SUPABASE_URL").replace(/\/+$/, "");
+const pubKey = () => env("SUPABASE_PUBLISHABLE_KEY") || env("SUPABASE_ANON_KEY");
+const secretKey = () => env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
+const configured = () => !!(base() && pubKey() && secretKey() && env("STUDIO_OWNER_ID"));
+const error = (message, status=400) => Object.assign(new Error(message), {status});
+const json = (res, status, data) => {
+  res.setHeader("Cache-Control","no-store");
+  res.setHeader("X-Content-Type-Options","nosniff");
+  res.status(status).json(data);
+};
+const cleanUrl = (u) => /^https:\/\/[^\s]+$/i.test(u || "");
+const isUuid = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id || "");
+const channelId = (c) => c === "fashion" ? "INSTAGRAM_FASHION_ID" : "INSTAGRAM_YOGO_ID";
+const tokenKey = (c) => c === "fashion" ? "INSTAGRAM_FASHION_TOKEN" : "INSTAGRAM_YOGO_TOKEN";
+const metaId = (c) => env(channelId(c)) || env(c === "fashion" ? "FASHION_IG_USER_ID" : "YOGO_IG_USER_ID");
+const metaToken = (c) => env(tokenKey(c)) || env(c === "fashion" ? "FASHION_IG_ACCESS_TOKEN" : "YOGO_IG_ACCESS_TOKEN");
+async function supabase(path, {method="GET", bearer, admin=false, body, contentType="application/json", extraHeaders={}}={}) {
+  if(!configured()) throw error("Supabase 관리자 연결이 아직 설정되지 않았습니다",503);
+  const key = admin ? secretKey() : pubKey();
+  const headers = {"apikey":key, ...extraHeaders};
+  if (bearer) headers.Authorization = "Bearer " + bearer;
+  else if (admin && !key.startsWith("sb_secret_")) headers.Authorization = "Bearer " + key;
+  if (body!==undefined) headers["Content-Type"] = contentType;
+  const resp = await fetch(base()+path,{method,headers,body:body===undefined?undefined:(typeof body==="string" || Buffer.isBuffer(body) ? body : JSON.stringify(body))});
+  const raw=await resp.text();
+  let data;try{data=JSON.parse(raw)}catch{data=raw}
+  if(!resp.ok)throw error("Supabase "+resp.status+": "+(typeof data==="object" ? data.msg || data.message || data.error_description || data.error || "요청 실패" : String(data).slice(0,200)),resp.status);
+  return data;
+}
+async function owner(req) {
+  const bearer=(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i)?.[1];
+  if(!bearer)throw error("관리자 로그인이 필요합니다",401);
+  const user=await supabase("/auth/v1/user",{bearer});
+  if(!user?.id || user.id !== env("STUDIO_OWNER_ID"))throw error("관리자 권한 없음",403);
+  return {id:user.id,bearer};
+}
+async function rows(path, bearer, admin=false) {
+  const r=await supabase("/rest/v1/"+path,{bearer,admin});
+  return Array.isArray(r)?r:[];
+}
+async function getPost(id,user) {
+  if(!isUuid(id))throw error("게시물 ID 오류");
+  const list=await rows("studio_posts?id=eq."+id+"&owner_id=eq."+encodeURIComponent(user.id)+"&select=*&limit=1",user.bearer);
+  if(!list.length)throw error("게시물을 찾을 수 없습니다",404);
+  return list[0];
+}
+async function updatePost(id,patch,user,filters="") {
+  const list=await supabase("/rest/v1/studio_posts?id=eq."+id+"&owner_id=eq."+encodeURIComponent(user.id)+filters+"&select=*",{
+    method:"PATCH",bearer:user.bearer,extraHeaders:{"Prefer":"return=representation"},body:patch});
+  if(!list?.length)throw error("수정할 수 없거나 상태가 변경되었습니다",409);
+  return list[0];
+}
+const sampleSlides=(c)=> c==="fashion" ? [
+  ["COVER","한 끗 차이로\n달라지는 코디","핏과 색을 바꾸는 작은 습관"],
+  ["01","상의는 짧게\n하의는 길게","비율에 따라 실루엣이 달라져"],
+  ["02","컬러는 세 가지 이하","기본색 두 가지, 포인트색 하나"],
+  ["03","신발로 분위기 바꾸기","로퍼와 스니커즈의 차이"],
+  ["04","소재를 섞어 입기","니트와 데님을 겹쳐봐"],
+  ["SAVE","내일 코디 전에 저장","입는감각 스타일 노트"]
+] : [
+  ["COVER","결제 전에\n이것부터 확인","필요한 제품을 더 똑똑하게 고르는 법"],
+  ["01","사용 장면 떠올리기","얼마나 자주 쓸지부터 생각해"],
+  ["02","치수와 옵션 확인","같은 이름도 구성이 다를 수 있어"],
+  ["03","배송 조건 살피기","반품·배송비도 구매 기준"],
+  ["04","후기는 맥락과 함께","실제 사용 환경이 비슷한지 체크"],
+  ["SAVE","사기 전에 다시 보기","YOGO EDIT 쇼핑 체크리스트"]
+];
+function makeDraft(channel) {
+  if(!["fashion","yogo"].includes(channel))throw error("계정을 선택해 주세요");
+  return {channel,title:channel==="fashion"?"입는감각 스타일 노트":"구매 전 쇼핑 체크리스트",
+    hook:channel==="fashion"?"잘 입는 법은 작은 차이에서":"결제 전에 이건 꼭 확인",
+    caption:channel==="fashion"?"옷장에 있는 아이템으로 새롭게 코디해봐\n#입는감각":"필요한 제품을 고를 때 확인해둘 체크리스트\n#YOGOEDIT",
+    slides:sampleSlides(channel).map(([tag,title,desc])=>({tag,title,desc})),
+    image_urls:[],source_links:[],landing_url:null,disclosure_required:false,
+    verified:false,status:"draft",review_notes:"원고 및 이미지 사실관계·권리 확인 필요"};
+}
+function inspect(post,{requireImages=false}={}) {
+  const bad=[];
+  if(!["fashion","yogo"].includes(post.channel))bad.push("계정 오류");
+  if(!post.title || !post.caption || !Array.isArray(post.slides) || post.slides.length!==6)bad.push("제목·캡션·6장 구성을 완성해 주세요");
+  if(!post.verified)bad.push("검수 완료 체크가 필요합니다");
+  if(requireImages && (!Array.isArray(post.image_urls) || post.image_urls.length!==6 || post.image_urls.some(x=>!cleanUrl(x))))bad.push("공개 JPEG 이미지 6장을 업로드해 주세요");
+  if(post.channel==="yogo" && !cleanUrl(post.landing_url))bad.push("YOGO의 검증된 HTTPS 랜딩 주소가 필요합니다");
+  if(post.disclosure_required && !/(광고|제휴|수수료|협찬)/.test(post.caption || ""))bad.push("제휴/광고 고지 문구가 필요합니다");
+  return bad;
+}
+async function generateAi(channel) {
+  if(!env("OPENAI_API_KEY"))throw error("AI API 키가 설정되지 않았습니다",503);
+  const system="한국어 인스타그램 카드뉴스 에디터. 확인되지 않은 가격, 할인, 후기, 연예인 사용, 상품 인기도, 실사용 체험, 최신 트렌드 사실을 지어내지 말 것. 6장의 짧고 구체적인 에버그린 정보. 사진이나 상품 데이터가 확인되지 않으면 추측하지 말 것.";
+  const prompt=channel==="fashion"?"입는감각 패션 매거진: 20~40대 한국인 스타일링과 코디 아이디어":"YOGO EDIT 쇼핑 매거진: 상품 사실을 지어내지 않고 유용한 구매 체크리스트";
+  const response=await fetch("https://api.openai.com/v1/chat/completions",{
+    method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+env("OPENAI_API_KEY")},
+    body:JSON.stringify({model:env("OPENAI_TEXT_MODEL")||"gpt-4.1-mini",response_format:{type:"json_object"},
+      messages:[{role:"system",content:system},{role:"user",content:prompt+"를 위한 6장 카드뉴스 초안을 만드세요. 다음 JSON 형식만: {\"title\":\"\",\"hook\":\"\",\"caption\":\"\",\"slides\":[{\"tag\":\"\",\"title\":\"\",\"desc\":\"\"}]}"}]})
+  });
+  const data=await response.json();
+  if(!response.ok)throw error("AI API 오류: "+(data.error?.message||response.status),502);
+  let out;try{out=JSON.parse(data.choices[0].message.content)}catch{throw error("AI 결과 형식 오류",502)}
+  if(!Array.isArray(out.slides)||out.slides.length!==6)throw error("AI 결과가 6장이 아닙니다",502);
+  const clean=s=>String(s||"").slice(0,300);
+  return {...makeDraft(channel),title:clean(out.title),hook:clean(out.hook),caption:clean(out.caption).slice(0,2200),
+    slides:out.slides.map(x=>({tag:clean(x.tag).slice(0,24),title:clean(x.title),desc:clean(x.desc)}))};
+}
+function bodyOf(req) {
+  if(req.body && typeof req.body==="object")return req.body;
+  try{return JSON.parse(req.body||"{}")}catch{throw error("잘못된 JSON 요청")}
+}
+async function handler(req,res) {
+  try{
+    if(req.method==="OPTIONS")return json(res,405,{error:"지원하지 않는 요청"});
+    const action=String(req.query?.action||"status");
+    if(action==="status" && req.method==="GET")return json(res,200,{
+      mode:configured()?"connected":"demo",authenticated:false,livePublishEnabled:env("LIVE_PUBLISH_ENABLED")==="true",
+      ownerConfigured:!!env("STUDIO_OWNER_ID"),metaReady:{fashion:!!(metaToken("fashion")&&metaId("fashion")),yogo:!!(metaToken("yogo")&&metaId("yogo"))},
+      imageRendering:"client-preview",storageReady:configured(),aiReady:!!env("OPENAI_API_KEY")
+    });
+    if(action==="login" && req.method==="POST"){
+      if(!configured())throw error("관리자 DB 연결 설정이 아직 없습니다",503);
+      const b=bodyOf(req);if(typeof b.email!=="string"||typeof b.password!=="string")throw error("로그인 정보가 필요합니다");
+      const session=await supabase("/auth/v1/token?grant_type=password",{
+        method:"POST",body:{email:b.email,password:b.password},extraHeaders:{"X-Client-Info":"yogo-social-studio"}});
+      const user=await supabase("/auth/v1/user",{bearer:session.access_token});
+      if(user.id!==env("STUDIO_OWNER_ID"))throw error("이 앱의 관리자로 지정되지 않은 계정입니다",403);
+      return json(res,200,{access_token:session.access_token,expires_in:session.expires_in,user:{id:user.id,email:user.email}});
+    }
+    const user=await owner(req);
+    if(action==="posts" && req.method==="GET"){
+      const list=await rows("studio_posts?select=*&owner_id=eq."+encodeURIComponent(user.id)+"&order=created_at.desc&limit=100",user.bearer);
+      return json(res,200,{posts:list});
+    }
+    if(action==="create" && req.method==="POST"){
+      const b=bodyOf(req),channel=b.channel;
+      if(!["fashion","yogo"].includes(channel))throw error("잘못된 계정");
+      const post=b.ai?await generateAi(channel):makeDraft(channel);
+      const inserted=await supabase("/rest/v1/studio_posts?select=*",{method:"POST",bearer:user.bearer,
+        extraHeaders:{"Prefer":"return=representation"},body:{...post,owner_id:user.id}});
+      return json(res,201,{post:inserted[0]});
+    }
+    const b=bodyOf(req);
+    if(!isUuid(b.id))throw error("게시물 ID를 확인해 주세요");
+    const post=await getPost(b.id,user);
+    if(action==="edit" && req.method==="POST"){
+      if(!["draft","approved"].includes(post.status))throw error("예약·게시 상태의 글은 편집할 수 없습니다",409);
+      const allowed=["title","hook","caption","slides","landing_url","source_links","verified","disclosure_required","review_notes"];
+      const patch={status:"draft",verified:false};
+      for(const k of allowed)if(Object.prototype.hasOwnProperty.call(b,k))patch[k]=b[k];
+      if(patch.slides && (!Array.isArray(patch.slides) || patch.slides.length!==6))throw error("카드뉴스는 정확히 6장이어야 합니다");
+      if(patch.landing_url && !cleanUrl(patch.landing_url))throw error("HTTPS 랜딩만 허용");
+      if(patch.title && String(patch.title).length>140)throw error("제목이 너무 깁니다");
+      return json(res,200,{post:await updatePost(post.id,patch,user)});
+    }
+    if(action==="upload" && req.method==="POST"){
+      if(post.status!=="draft")throw error("초안 상태에서만 이미지 업로드 가능",409);
+      const n=Number(b.slide);
+      if(!Number.isInteger(n)||n<0||n>5)throw error("슬라이드 번호 오류");
+      if(typeof b.base64!=="string" || b.base64.length>7000000)throw error("JPEG 5MB 이하만 업로드 가능");
+      const image=Buffer.from(b.base64.replace(/^data:image\/jpeg;base64,/,""),"base64");
+      if(image.length<1000||image.length>5000000||image[0]!==255||image[1]!==216)throw error("유효한 JPEG 이미지가 아닙니다");
+      const path=user.id+"/"+post.id+"/slide-"+(n+1)+"-"+Date.now()+".jpg";
+      await supabase("/storage/v1/object/studio-media/"+path,{method:"POST",admin:true,body:image,contentType:"image/jpeg"});
+      const url=base()+"/storage/v1/object/public/studio-media/"+path;
+      const urls=Array.isArray(post.image_urls)?post.image_urls.slice():[];
+      urls[n]=url;
+      return json(res,200,{post:await updatePost(post.id,{image_urls:urls,verified:false},user),image_url:url});
+    }
+    if(action==="approve" && req.method==="POST"){
+      const candidate={...post,verified:true};
+      const errors=inspect(candidate,{requireImages:true});
+      if(errors.length)throw error(errors.join(" / "),422);
+      if(post.status!=="draft")throw error("초안만 승인할 수 있습니다",409);
+      return json(res,200,{post:await updatePost(post.id,{verified:true,status:"approved"},user)});
+    }
+    if(action==="schedule" && req.method==="POST"){
+      if(post.status!=="approved")throw error("검수 승인 상태가 아닙니다",409);
+      const target=new Date(b.scheduled_at);
+      if(!Number.isFinite(target.getTime())||target<=new Date())throw error("미래 시간을 선택하세요");
+      const allowedHour=post.channel==="fashion"?3:11;
+      if(target.getUTCHours()!==allowedHour||target.getUTCMinutes()!==0)throw error("한국시간 패션 12시 / YOGO 20시 정각만 가능");
+      const errors=inspect(post,{requireImages:true});if(errors.length)throw error(errors.join(" / "),422);
+      return json(res,200,{post:await updatePost(post.id,{status:"scheduled",scheduled_at:target.toISOString()},user)});
+    }
+    if(action==="unschedule" && req.method==="POST"){
+      if(!["approved","scheduled"].includes(post.status))throw error("예약 취소 대상이 아닙니다",409);
+      return json(res,200,{post:await updatePost(post.id,{status:"draft",scheduled_at:null,verified:false},user)});
+    }
+    throw error("지원하지 않는 요청",405);
+  }catch(e){const status=Number(e.status)||500;json(res,status,{error:status>=500?"서버 설정 또는 연동 오류: "+e.message:e.message})}
+}
+export default handler;
+export {configured,env,base,supabase,inspect,metaToken,metaId,rows,error,json};

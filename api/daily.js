@@ -111,7 +111,29 @@ async function copywriter(channel,topic){
     throw new Error("AI draft failed factuality/marketing validation");
   return result;
 }
-async function jpegSlide(channel,day,index,slide,draft,font){
+async function generateArt(channel,topic){
+  if(env("AUTO_PHOTO_ENABLED")!=="true")return null;
+  // One optional photorealistic, logo-free editorial still life per channel.
+  // No fabricated product images, named celebrities or purported real-world endorsements.
+  const fashion=channel==="fashion";
+  const prompt=fashion
+   ?"High-end Korean fashion editorial still life photography, neutral minimalist wardrobe staples on elegant hangers: soft knits, cream shirt, charcoal blazer, beige trousers, black leather bag. Soft daylight, quiet luxury composition, editorial magazine image, beautiful tactile textures, professional realistic fashion styling. Leave generous uncluttered negative space at middle-left for editorial type overlay. Vertical 4:5 framing. NO lettering, NO text, NO logos, NO watermark, NO visible brands. Theme: "+topic
+   :"High-end contemporary shopping editorial still life: tasteful generic laptop without visible screen text, folded neutral fabric, unbranded parcels, measuring tape, elegant minimal desk, natural paper and stationery. Soft muted lavender and cream palette, diffused light, luxury shopping magazine photography. Leave generous clean space at middle-left for editorial typography. Vertical 4:5 framing. NO text, NO price tags, NO brand names, NO logos, NO watermarks. Theme: "+topic;
+  const response=await fetch("https://api.openai.com/v1/images/generations",{
+    method:"POST",signal:AbortSignal.timeout(70000),
+    headers:{"Content-Type":"application/json",Authorization:"Bearer "+env("OPENAI_API_KEY")},
+    body:JSON.stringify({model:env("OPENAI_IMAGE_MODEL")||"gpt-image-2.5-flare",prompt,n:1,size:"1024x1536",quality:"medium",background:"opaque",output_format:"jpeg"})
+  });
+  const data=await response.json();
+  if(!response.ok)throw new Error("OpenAI image generation error "+response.status+": "+String(data.error?.message||"").slice(0,90));
+  const encoded=data.data?.[0]?.b64_json;
+  if(typeof encoded!=="string"||encoded.length<10000)throw new Error("AI image payload missing");
+  const img=Buffer.from(encoded,"base64");
+  const md=await sharp(img).metadata();
+  if(md.width<700||md.height<900)throw new Error("Invalid AI visual");
+  return img;
+}
+async function jpegSlide(channel,day,index,slide,draft,font,photo){
   const fashion=channel==="fashion";
   const paper=fashion?"#F6F0E7":"#F5F2F6",ink=fashion?"#292623":"#282230";
   const accent=fashion?"#8E684D":"#76567D",faint=fashion?"#DDD1C3":"#DDD1E4";
@@ -145,9 +167,12 @@ async function jpegSlide(channel,day,index,slide,draft,font){
       txt(fashion?"매일 입는 옷의 감각":"똑똑한 구매 기록",{fontSize:23,color:ink}),
       txt(number,{fontSize:23,color:accent})
     ],{justifyContent:"space-between",width:"100%",paddingTop:28,marginTop:31,borderTop:"2px solid "+faint})
-  ],{width:1080,height:1350,display:"flex",flexDirection:"column",padding:"72px 76px",backgroundColor:paper});
+  ],{width:1080,height:1350,display:"flex",flexDirection:"column",padding:"72px 76px",backgroundColor:photo&&index===0?(fashion?"rgba(246,240,231,0.7)":"rgba(245,242,246,0.7)"):paper});
   const svg=await satori(frame,{width:1080,height:1350,fonts:[{name:"Noto",data:font,weight:400,style:"normal"}]});
-  const b=await sharp(Buffer.from(svg)).jpeg({quality:88,mozjpeg:true}).toBuffer();
+  const b=photo&&index===0
+    ? await sharp(photo).resize(1080,1350,{fit:"cover",position:"attention"})
+      .composite([{input:Buffer.from(svg),blend:"over"}]).jpeg({quality:88,mozjpeg:true}).toBuffer()
+    : await sharp(Buffer.from(svg)).jpeg({quality:88,mozjpeg:true}).toBuffer();
   const size=await sharp(b).metadata();
   if(size.width!==1080||size.height!==1350||b.length>4800000)throw new Error("Invalid generated image");
   return b;
@@ -169,6 +194,7 @@ async function generateOne(channel,day,font){
     "&generation_day=eq."+day+"&auto_generated=eq.true&select=id,status&limit=1",{admin:true});
   if(before.length)return {channel,outcome:"already_exists",id:before[0].id,status:before[0].status};
   const topic=dailyTopic(channel,day),draft=await copywriter(channel,topic);
+  const editorialArt=await generateArt(channel,topic);
   const row={
     owner_id:owner,channel,title:draft.title,hook:draft.hook,caption:draft.caption,
     slides:draft.slides,image_urls:[],source_links:[],disclosure_required:false,
@@ -187,7 +213,7 @@ async function generateOne(channel,day,font){
   try{
     const urls=[];
     for(let i=0;i<6;i++){
-      const image=await jpegSlide(channel,day,i,draft.slides[i],draft,font);
+      const image=await jpegSlide(channel,day,i,draft.slides[i],draft,font,editorialArt);
       urls.push(await uploadImage(day,post.id,owner,channel,i,image));
     }
     if(urls.length!==6||urls.some(u=>!u.startsWith("https://")))throw new Error("JPEG validation incomplete");

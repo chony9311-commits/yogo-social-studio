@@ -219,6 +219,21 @@ async function handler(req,res) {
       const errors=inspect(post,{requireImages:true});if(errors.length)throw error(errors.join(" / "),422);
       return json(res,200,{post:await updatePost(post.id,{status:"scheduled",scheduled_at:target.toISOString()},user)});
     }
+    if(action==="premium-render" && req.method==="POST"){
+      // Paid, explicitly initiated visual generation. Never auto-publishes.
+      if(post.status!=="draft")throw error("고퀄리티 재제작은 초안에서만 가능합니다",409);
+      if(b.confirm!=="GENERATE PREMIUM IMAGES")throw error("유료 이미지 생성 확인이 필요합니다",400);
+      if(!env("OPENAI_API_KEY"))throw error("OPENAI_API_KEY가 등록되지 않았습니다",503);
+      if(!adminConfigured())throw error("Supabase 서버 비밀키가 필요합니다",503);
+      if(!Array.isArray(post.slides)||post.slides.length!==6)throw error("6장 원고를 먼저 준비해 주세요",422);
+      const {renderPremiumPost}=await import("./premium.js");
+      const urls=await renderPremiumPost(post,user.id);
+      const updated=await updatePost(post.id,{
+        image_urls:urls,verified:false,ai_generated:true,status:"draft",
+        review_notes:"매거진형 AI 사진 3장 + 전용 한글 편집 디자인 6장 · 재검수 및 광고 고지 확인 필요"
+      },user,"&status=eq.draft");
+      return json(res,200,{post:updated,images_ready:urls.length,ai_generated:true});
+    }
     if(action==="publish-now" && req.method==="POST"){
       // Explicit owner-initiated irreversible Instagram publication.
       // Scheduling (cron) is independently disabled unless LIVE_PUBLISH_ENABLED=true.

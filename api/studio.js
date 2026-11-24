@@ -117,7 +117,7 @@ async function handler(req,res) {
     if(action==="status" && req.method==="GET")return json(res,200,{
       mode:configured()?"connected":"demo",authenticated:false,livePublishEnabled:env("LIVE_PUBLISH_ENABLED")==="true",
       ownerConfigured:!!env("STUDIO_OWNER_ID"),metaReady:{fashion:!!(metaToken("fashion")&&metaId("fashion")),yogo:!!(metaToken("yogo")&&metaId("yogo"))},
-      imageRendering:"client-preview",storageReady:configured(),adminPublishingReady:adminConfigured(),aiReady:!!env("OPENAI_API_KEY")
+      imageRendering:"client-preview",storageReady:configured(),adminPublishingReady:adminConfigured(),manualPublishEnabled:env("MANUAL_PUBLISH_ENABLED")==="true",aiReady:!!env("OPENAI_API_KEY")
     });
     if(action==="login" && req.method==="POST"){
       if(!configured())throw error("관리자 DB 연결 설정이 아직 없습니다",503);
@@ -210,6 +210,32 @@ async function handler(req,res) {
       if(target.getUTCHours()!==allowedHour||target.getUTCMinutes()!==0)throw error("한국시간 패션 12시 / YOGO 20시 정각만 가능");
       const errors=inspect(post,{requireImages:true});if(errors.length)throw error(errors.join(" / "),422);
       return json(res,200,{post:await updatePost(post.id,{status:"scheduled",scheduled_at:target.toISOString()},user)});
+    }
+    if(action==="publish-now" && req.method==="POST"){
+      // Explicit owner-initiated irreversible Instagram publication.
+      // Scheduling (cron) is independently disabled unless LIVE_PUBLISH_ENABLED=true.
+      if(env("MANUAL_PUBLISH_ENABLED")!=="true")throw error("수동 Instagram 게시가 서버에서 잠겨 있습니다",503);
+      if(!adminConfigured())throw error("게시용 Supabase 서버 비밀키 설정이 필요합니다",503);
+      if(b.confirm!=="PUBLISH TO INSTAGRAM")throw error("게시 확인값 오류");
+      if(post.status!=="approved")throw error("검수 승인된 글만 게시할 수 있습니다",409);
+      if(!post.verified)throw error("이미지와 문구를 먼저 검수해 주세요",422);
+      const issues=inspect(post,{requireImages:true});if(issues.length)throw error(issues.join(" / "),422);
+      const tokenReady=!!(metaId(post.channel)&&metaToken(post.channel));
+      if(!tokenReady)throw error("선택한 인스타 계정의 토큰 또는 ID가 없습니다",503);
+      const claimed=await updatePost(post.id,{status:"publishing",error_message:null},user,"&status=eq.approved");
+      try{
+        // Dynamic import prevents cron from being run on ordinary editor requests.
+        const {publishCarousel}=await import("./cron.js");
+        const mediaId=await publishCarousel({...post,status:"publishing"});
+        const saved=await updatePost(post.id,{status:"published",published_at:new Date().toISOString(),published_media_id:mediaId,error_message:null},user,"&status=eq.publishing");
+        await supabase("/rest/v1/studio_publish_log",{admin:true,method:"POST",body:{post_id:post.id,result:"published",detail:"Owner confirmed manual Instagram publication",meta_media_id:mediaId}}).catch(()=>{});
+        return json(res,200,{post:saved,published_media_id:mediaId,channel:post.channel});
+      }catch(err){
+        // Do NOT retry automatically: Meta may have accepted the publication before a network error.
+        await updatePost(post.id,{status:"failed",error_message:String(err.message).slice(0,340)},user,"&status=eq.publishing").catch(()=>{});
+        await supabase("/rest/v1/studio_publish_log",{admin:true,method:"POST",body:{post_id:post.id,result:"uncertain",detail:String(err.message).slice(0,600)}}).catch(()=>{});
+        throw error("게시 결과 확인 필요(자동 재시도 금지): "+String(err.message).slice(0,250),502);
+      }
     }
     if(action==="unschedule" && req.method==="POST"){
       if(!["approved","scheduled"].includes(post.status))throw error("예약 취소 대상이 아닙니다",409);

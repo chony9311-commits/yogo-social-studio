@@ -219,8 +219,10 @@ export default async function handler(req,res){
     if(env("AUTO_GENERATION_ENABLED")!=="true")
       return json(res,200,{enabled:false,generated:0,message:"Auto generation disabled by server toggle"});
     if(!env("OPENAI_API_KEY"))return json(res,503,{error:"OPENAI_API_KEY missing"});
+    const requested=String(req.query?.channel||"");
+    const channels=["fashion","yogo"].includes(requested)?[requested]:["fashion","yogo"];
     const day=KST_DATE(),font=await getFont(),results=[];
-    for(const channel of ["fashion","yogo"]){
+    for(const channel of channels){
       try{results.push(await generateOne(channel,day,font))}
       catch(e){results.push({channel,outcome:"failed",reason:String(e.message).slice(0,200)})}
     }

@@ -11,7 +11,7 @@ YOGO Social Studio 운영판에 `api/daily-fashion.js`, `api/daily-yogo.js` 자�
 - 한국시간 낮 12시 / 저녁 8시: 기존 `api/cron.js` 예약 게시 검사
 - 동일 날짜/계정은 DB 고유 인덱스로 중복 생성 방지, 게시 실패 시 자동 재시도 금지
 - AI가 에버그린 정보성 원고를 작성하고, Satori + Sharp가 1080×1350 JPEG 6장을 제작해 별도 Supabase Storage에 저장
-- 실제 사진이나 상품 사진을 합성하는 기능은 아직 없습니다. 카드뉴스는 사진 화보가 아닌 한국어 타이포그래피 기반 에디토리얼 디자인입니다.
+- 사진 없이도 한국어 타이포그래피 기반 에디토리얼 JPEG 6장을 제작합니다. 별도로 유료 이미지 API를 활성화하면 계정별로 브랜드 없는 AI 에디토리얼 화보 1장을 생성해 표지에 합성합니다.
 
 ### 필요한 환경변수
 
@@ -19,6 +19,8 @@ YOGO Social Studio 운영판에 `api/daily-fashion.js`, `api/daily-yogo.js` 자�
 | --- | --- | --- |
 | `OPENAI_API_KEY` | **미등록 — 직접 Sensitive 등록** | AI 원고 제작용 별도 API 유료 사용 |
 | `OPENAI_TEXT_MODEL` | `gpt-4.1-mini` | 원고 생성 모델 기본값 |
+| `AUTO_PHOTO_ENABLED` | `false` (초기) | 유료 AI 패션·쇼핑 에디토리얼 사진 자동 생성 토글 |
+| `OPENAI_IMAGE_MODEL` | `gpt-image-2.5-flare` | 자동 화보 모델 선택, 추가 과금 |
 | `AUTO_GENERATION_ENABLED` | `false` (초기) | 검증 후 `true`로 전환 |
 | `AUTO_PUBLISH_ENABLED` | `false` (초기) | 검증 후 `true`로 전환 |
 | `LIVE_PUBLISH_ENABLED` | `false` (초기) | 게시 테스트 성공 후 `true`로 전환 |

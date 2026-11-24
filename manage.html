@@ -10,11 +10,16 @@
 <div id="loginBox" class="login"><h2>관리자 로그인</h2><p id="loginHelp">전용 Supabase 프로젝트와 관리자 계정 연결이 필요합니다. 관리자 이메일·비밀번호는 서버에 저장하지 않습니다.</p><label>관리자 이메일<input id="email" type="email" autocomplete="username" placeholder="이메일"></label><label>비밀번호<input id="password" type="password" autocomplete="current-password" placeholder="비밀번호"></label><button class="primary" id="login">로그인</button><p class="small muted" style="margin-top:16px">권한이 없는 계정은 서버에서 거부됩니다. 토큰은 이 탭에서만 보관합니다.</p></div>
 <div id="workspace" class="layout hidden">
 <section class="pane"><div class="paneHead">CONTENT QUEUE</div><div class="paneBody"><div class="tabs"><button data-channel="fashion" class="active">입는감각</button><button data-channel="yogo">YOGO EDIT</button></div><button class="primary wide" id="new">＋ 새 6장 초안</button><button class="wide" id="ai" style="margin-top:6px">✦ AI 초안 만들기</button><div class="small muted" style="margin:19px 0 8px">게시물 <span id="count">0</span>개</div><div id="posts"></div><button class="wide" id="reload">↻ 목록 새로고침</button><button class="wide" id="igCheck" style="margin-top:7px">◎ Instagram 연결 실제 점검</button><div class="small muted" id="igResult" aria-live="polite" style="margin-top:9px;line-height:1.7">로그인 후 계정 인증을 확인할 수 있어요. 점검 과정에서 게시물은 생성되지 않습니다.</div></div></section>
-<section class="pane"><div class="paneHead">CAROUSEL PREVIEW — 1080 × 1350</div><div class="posterOuter"><div class="poster" id="poster"><div class="posterContent"><div class="brandline" id="visualBrand"></div><div class="ptag" id="visualTag"></div><h2 id="visualTitle"></h2><p id="visualDesc"></p><div class="bottom"><span id="visualFoot"></span><span id="visualNum"></span></div></div></div></div><div class="posterTools"><div class="row"><button id="prev">← 이전 장</button><div class="slideSelector" id="slideNum">01 / 06</div><button id="next">다음 장 →</button></div><div class="row"><button id="saveJpg">현재 장 JPEG 저장</button><button id="upload">현재 장 서버 업로드</button></div><button id="uploadAll" class="wide">6장 모두 서버에 업로드</button><p class="small muted">이 렌더러는 타이포 중심 초안용입니다. 패션 화보 및 실제 상품 이미지는 사용 권한을 확인한 뒤 향후 사진 렌더러로 교체해야 합니다.</p></div></section>
+<section class="pane"><div class="paneHead">CAROUSEL PREVIEW — 1080 × 1350</div><div class="posterOuter"><div class="poster" id="poster"><div class="posterContent"><div class="brandline" id="visualBrand"></div><div class="ptag" id="visualTag"></div><h2 id="visualTitle"></h2><p id="visualDesc"></p><div class="bottom"><span id="visualFoot"></span><span id="visualNum"></span></div></div></div></div><div class="posterTools"><div class="row"><button id="prev">← 이전 장</button><div class="slideSelector" id="slideNum">01 / 06</div><button id="next">다음 장 →</button></div><div class="row"><button id="saveJpg">현재 장 JPEG 저장</button><button id="upload">현재 장 서버 업로드</button></div><button id="uploadAll" class="wide">간단한 타이포 이미지 6장 생성·업로드</button>
+<div style="border:1px dashed #cdbbc8;border-radius:12px;padding:14px;margin-top:12px;background:#fcf9fc">
+  <label for="finalFiles">완성된 고화질 JPEG 6장 (01.jpg ~ 06.jpg)<input type="file" id="finalFiles" accept="image/jpeg" multiple></label>
+  <button id="uploadFinal" class="wide primary">✦ 최종 디자인 6장 업로드</button>
+  <p class="small muted" id="uploadProgress" style="margin:9px 0 0">1080 × 1350 JPEG 6장을 선택하면 올바른 순서대로 서버에 업로드해요</p>
+</div></div></section>
 <section class="pane editorPane"><div class="paneHead">EDIT & APPROVE <span class="status" id="postStatus"></span></div><div class="paneBody"><div class="editorGrid"><label>게시물 제목<input id="title"></label><label>1장 후킹<input id="hook"></label><label>현재 장 제목<textarea id="slideTitle"></textarea></label><label>현재 장 설명<textarea id="slideDesc"></textarea></label><label>Instagram 캡션<textarea id="caption" rows="6"></textarea></label><label>YOGO 실제 랜딩 URL<input id="landing" type="url" placeholder="https://..."></label><label>한국시간 예약 일시 (패션 12시 / YOGO 20시)<input id="scheduled" type="datetime-local"></label></div>
 <label class="checklabel"><input id="disclosure" type="checkbox"> 제휴 링크가 포함돼 광고·수수료 고지가 필요함</label>
 <label class="checklabel"><input id="verified" type="checkbox"> 출처·이미지 권리·상품 정보·광고 문구를 실제로 확인했음</label>
-<div class="editorButtons"><button id="save">저장</button><button class="primary" id="approve">검수 승인</button><button id="unschedule">예약 취소</button><button class="primary" id="schedule">예약 등록</button></div><div class="help" id="result" style="margin-top:14px">운영 상태가 연결되면 초안을 만들 수 있습니다.</div></div></section>
+<div class="editorButtons"><button id="save">저장</button><button class="primary" id="approve">검수 승인</button><button id="unschedule">예약 취소</button><button class="primary" id="schedule">예약 등록</button><button id="publishNow" class="primary" style="background:#78516b;border-color:#78516b">◎ 승인된 글 지금 Instagram 게시</button></div><div class="help" id="result" style="margin-top:14px">운영 상태가 연결되면 초안을 만들 수 있습니다.</div></div></section>
 </div><div class="foot">SOCIAL STUDIO · Meta 게시 기본 OFF · 공개 GitHub에 토큰이나 비밀번호를 저장하지 마세요</div></div><div id="toast" class="toast hidden"></div>
 <script>
 const $=id=>document.getElementById(id);
@@ -25,7 +30,7 @@ function p(){return posts.find(x=>x.id===selectedId)||null}
 function fill(){const item=p();if(!item){for(const id of ["title","hook","caption","landing","slideTitle","slideDesc","scheduled"])$(id).value="";$("result").textContent="왼쪽에서 새 초안을 만들거나 게시물을 선택해 주세요";return}
   $("title").value=item.title||"";$("hook").value=item.hook||"";$("caption").value=item.caption||"";$("landing").value=item.landing_url||"";$("verified").checked=!!item.verified;$("disclosure").checked=!!item.disclosure_required;
   $("scheduled").value=item.scheduled_at?new Date(new Date(item.scheduled_at).getTime()+9*3600000).toISOString().slice(0,16):"";
-  $("postStatus").textContent=(item.status||"draft").toUpperCase();preview();
+  $("postStatus").textContent=(item.status||"draft").toUpperCase();$("publishNow").disabled=item.status!=="approved"||!status.manualPublishEnabled;preview();
 }
 function preview(){const item=p();if(!item)return;const card=item.slides?.[slide]||{tag:"",title:"",desc:""};$("slideTitle").value=card.title||"";$("slideDesc").value=card.desc||card.sub||"";$("visualBrand").textContent=item.channel==="fashion"?"입는감각 / FASHION EDIT":"YOGO / SHOPPING EDIT";$("visualTag").textContent=card.tag||"";$("visualTitle").textContent=card.title||"";$("visualDesc").textContent=card.desc||card.sub||"";$("visualFoot").textContent=item.channel==="fashion"?"FASHION NOTES":"SHOP SMARTER";$("visualNum").textContent=(slide+1)+" / 6";$("slideNum").textContent=String(slide+1).padStart(2,"0")+" / 06";$("poster").classList.toggle("yogo",item.channel==="yogo")}
 function localSync(){const item=p();if(!item)return;item.title=$("title").value;item.hook=$("hook").value;item.caption=$("caption").value;item.landing_url=$("landing").value;item.disclosure_required=$("disclosure").checked;item.verified=$("verified").checked;item.slides[slide].title=$("slideTitle").value;item.slides[slide].desc=$("slideDesc").value}
@@ -37,7 +42,7 @@ async function checkInstagram(){
   }catch(e){out.textContent="점검 실패: "+e.message}finally{btn.disabled=false}
 }
 async function reload(){try{const r=await data("/api/studio?action=posts");posts=r.posts;const list=posts.filter(x=>x.channel===channel);if(!list.some(x=>x.id===selectedId))selectedId=list[0]?.id||null;slide=0;render()}catch(e){toast(e.message)}}
-async function call(action,b){try{const r=await data("/api/studio?action="+action,b);if(r.post){posts=posts.filter(x=>x.id!==r.post.id);posts.unshift(r.post);selectedId=r.post.id;render()}toast(action==="approve"?"검수 승인 완료":action==="schedule"?"예약 등록 완료":action==="upload"?"이미지 업로드 완료":"저장 완료");return r}catch(e){toast(e.message);throw e}}
+async function call(action,b){try{const r=await data("/api/studio?action="+action,b);if(r.post){posts=posts.filter(x=>x.id!==r.post.id);posts.unshift(r.post);selectedId=r.post.id;render()}toast(action==="approve"?"검수 승인 완료":action==="schedule"?"예약 등록 완료":action==="publish-now"?"Instagram 실제 게시 완료":action==="upload"?"이미지 업로드 완료":"저장 완료");return r}catch(e){toast(e.message);throw e}}
 async function currentSave(){const item=p();if(!item)return;const patch={id:item.id,title:$("title").value,hook:$("hook").value,caption:$("caption").value,landing_url:$("landing").value||null,slides:item.slides.map((s,i)=>i===slide?{...s,title:$("slideTitle").value,desc:$("slideDesc").value}:s),disclosure_required:$("disclosure").checked,verified:$("verified").checked};return call("edit",patch)}
 function canvas(index){const item=p();const s=item.slides[index];const cn=document.createElement("canvas");cn.width=1080;cn.height=1350;const ctx=cn.getContext("2d");const g=ctx.createLinearGradient(100,0,920,1350);if(item.channel==="fashion"){g.addColorStop(0,"#f8f0eb");g.addColorStop(.6,"#ddc9bc");g.addColorStop(1,"#988085")}else{g.addColorStop(0,"#f7eef7");g.addColorStop(.6,"#dcc6dd");g.addColorStop(1,"#92759b")}ctx.fillStyle=g;ctx.fillRect(0,0,1080,1350);ctx.fillStyle="#302832";ctx.font="800 32px 'Noto Sans KR',sans-serif";ctx.fillText(item.channel==="fashion"?"입는감각  /  THE STYLE EDIT":"YOGO  /  SHOPPING EDIT",80,115);ctx.fillStyle="#8b6b87";ctx.font="700 31px 'Noto Sans KR',sans-serif";ctx.fillText(String(s.tag||"").slice(0,23),80,295);ctx.fillStyle="#302832";ctx.font="800 77px 'Noto Sans KR',sans-serif";let y=430;for(const ln of wrap(ctx,s.title,910)){ctx.fillText(ln,80,y);y+=105}ctx.font="400 35px 'Noto Sans KR',sans-serif";y+=40;for(const ln of wrap(ctx,s.desc||s.sub||"",900)){ctx.fillText(ln,80,y);y+=58}ctx.font="800 27px 'Noto Sans KR',sans-serif";ctx.fillText(item.channel==="fashion"?"FASHION NOTES":"SHOP SMARTER",80,1270);ctx.textAlign="right";ctx.fillText((index+1)+" / 6",985,1270);return cn}
 function wrap(ctx,t,max){const out=[];for(const raw of String(t||"").split("\n")){let line="";for(const ch of raw){if(line&&ctx.measureText(line+ch).width>max){out.push(line);line=""}line+=ch}out.push(line)}return out.slice(0,6)}
@@ -56,8 +61,39 @@ $("save").onclick=()=>currentSave().catch(()=>{});
 $("saveJpg").onclick=async()=>{if(!p())return;await document.fonts.ready;localSync();const a=document.createElement("a");a.href=canvas(slide).toDataURL("image/jpeg",.91);a.download=p().channel+"-slide-"+(slide+1)+".jpg";a.click()};
 $("upload").onclick=async()=>{if(!p())return;try{await document.fonts.ready;localSync();await imageUpload(slide)}catch{}};
 $("uploadAll").onclick=async()=>{if(!p())return;try{await document.fonts.ready;localSync();for(let i=0;i<6;i++)await imageUpload(i);toast("서버 업로드 6장 완료")}catch{}};
+function fileAsDataURL(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("이미지 파일을 읽을 수 없습니다"));reader.readAsDataURL(file)})}
+$("uploadFinal").onclick=async()=>{
+  const selected=p();if(!selected)return toast("왼쪽에서 게시물을 먼저 선택해 줘");
+  if(selected.status!=="draft")return toast("완성 이미지는 초안 상태에서만 업로드할 수 있어");
+  const files=[...$("finalFiles").files].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+  if(files.length!==6)return toast("01.jpg부터 06.jpg까지 JPEG 6장을 선택해 줘");
+  if(files.some(f=>f.type!=="image/jpeg"||f.size>5e6||f.size<1000))return toast("각 이미지가 JPEG 5MB 이하인지 확인해 줘");
+  const btn=$("uploadFinal");btn.disabled=true;
+  try{
+    await currentSave();
+    for(let i=0;i<6;i++){
+      const file=files[i];if(!new RegExp("^0?"+(i+1)+"\\.jpe?g$","i").test(file.name))throw Error("파일명은 01.jpg부터 06.jpg까지여야 해");
+      const bmp=await createImageBitmap(file);const valid=bmp.width===1080&&bmp.height===1350;bmp.close();if(!valid)throw Error(file.name+" 해상도가 1080×1350이 아냐");
+      $("uploadProgress").textContent=(i+1)+" / 6 장 업로드 중 — "+file.name;
+      await call("upload",{id:selected.id,slide:i,base64:await fileAsDataURL(file)});
+    }
+    $("uploadProgress").textContent="완성 이미지 6장 업로드 완료 ✓ 이제 검수 승인 후 게시할 수 있어";
+    $("finalFiles").value="";
+  }catch(e){$("uploadProgress").textContent="업로드 중지: "+e.message;toast(e.message)}finally{btn.disabled=false}
+};
 $("approve").onclick=async()=>{if(!p())return;try{await currentSave();await call("approve",{id:p().id})}catch{}};
 $("unschedule").onclick=()=>p()&&call("unschedule",{id:p().id}).catch(()=>{});
 $("schedule").onclick=async()=>{if(!p())return;const val=$("scheduled").value;if(!val)return toast("예약 희망일을 선택해줘");const iso=new Date(val+":00+09:00").toISOString();try{await call("schedule",{id:p().id,scheduled_at:iso})}catch{}};
-(async()=>{try{status=await data("/api/studio?action=status");$("mode").textContent=status.mode==="connected"?"DB CONNECTED":"DEMO · DB NOT CONNECTED";$("meta").textContent="Instagram 토큰: "+(status.metaReady.fashion?"입는감각 ✓":"입는감각 미등록")+" · "+(status.metaReady.yogo?"YOGO ✓":"YOGO 미등록");$("safety").textContent=status.livePublishEnabled?"주의: 실제 게시 옵션이 활성화돼 있어요. 예약·검수 콘텐츠만 전송됩니다.":"실제 게시 OFF — 관리자 검수 후 예약하더라도 LIVE_PUBLISH_ENABLED=true로 전환하기 전에는 인스타그램에 발행되지 않습니다.";if(status.mode!=="connected")$("loginHelp").textContent="현재 전용 Supabase 설정이 없어 로그인이 잠겨 있어요. Vercel에서 SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, STUDIO_OWNER_ID 환경변수를 확인해 주세요. 실제 예약 발행에는 SUPABASE_SECRET_KEY도 필요합니다.";if(!status.aiReady)$("ai").disabled=true}catch(e){$("mode").textContent="CONNECTION ERROR";toast(e.message)}})();
+$("publishNow").onclick=async()=>{
+  const item=p();if(!item||item.status!=="approved")return toast("먼저 6장 이미지를 업로드하고 검수 승인을 받아야 해");
+  if(!status.manualPublishEnabled)return toast("서버에서 수동 게시가 비활성화돼 있어");
+  const account=item.channel==="fashion"?"@ipneun_gamgak":"@yogo.edit";
+  const ok=window.confirm(account+" 인스타그램 피드에 카드뉴스 6장을 즉시 게시할까?\n\n한번 게시하면 이 화면에서 취소할 수 없어. 계정과 이미지를 최종 확인해 줘.");
+  if(!ok)return;
+  const btn=$("publishNow");btn.disabled=true;const label=btn.textContent;btn.textContent="Instagram 게시 중… 창을 닫지 마세요";
+  try{const r=await call("publish-now",{id:item.id,confirm:"PUBLISH TO INSTAGRAM"});$("result").textContent="실제 게시 완료 · 미디어 ID "+(r.published_media_id||"확인 중")}
+  catch(e){$("result").textContent="게시 결과 확인 필요: "+e.message+" · 인스타그램 계정을 확인하기 전 재시도하지 마세요"}
+  finally{btn.textContent=label;btn.disabled=p()?.status!=="approved"}
+};
+(async()=>{try{status=await data("/api/studio?action=status");$("mode").textContent=status.mode==="connected"?"DB CONNECTED":"DEMO · DB NOT CONNECTED";$("meta").textContent="Instagram 토큰: "+(status.metaReady.fashion?"입는감각 ✓":"입는감각 미등록")+" · "+(status.metaReady.yogo?"YOGO ✓":"YOGO 미등록");$("safety").textContent=status.livePublishEnabled?"주의: 자동 예약 게시 ON — 검수 완료 콘텐츠만 전송됩니다.":status.manualPublishEnabled?"자동 예약 게시 OFF · 검수 승인 후 운영자가 지금 Instagram 게시 버튼을 눌러야만 실제 게시됩니다.":"실제 게시 OFF — 자동 게시와 수동 게시가 모두 비활성화돼 있습니다.";if(status.mode!=="connected")$("loginHelp").textContent="현재 전용 Supabase 설정이 없어 로그인이 잠겨 있어요. Vercel에서 SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, STUDIO_OWNER_ID 환경변수를 확인해 주세요. 실제 예약 발행에는 SUPABASE_SECRET_KEY도 필요합니다.";if(!status.aiReady)$("ai").disabled=true}catch(e){$("mode").textContent="CONNECTION ERROR";toast(e.message)}})();
 </script></body></html>

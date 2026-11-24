@@ -2,11 +2,11 @@
   "version": 2,
   "crons": [
     {
-      "path": "/api/daily?channel=fashion",
+      "path": "/api/daily-fashion",
       "schedule": "0 0 * * *"
     },
     {
-      "path": "/api/daily?channel=yogo",
+      "path": "/api/daily-yogo",
       "schedule": "0 1 * * *"
     },
     {
@@ -26,6 +26,12 @@
       "maxDuration": 120
     },
     "api/daily.js": {
+      "maxDuration": 120
+    },
+    "api/daily-fashion.js": {
+      "maxDuration": 120
+    },
+    "api/daily-yogo.js": {
       "maxDuration": 120
     }
   }

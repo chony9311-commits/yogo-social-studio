@@ -20,19 +20,19 @@
   ],
   "functions": {
     "api/studio.js": {
-      "maxDuration": 120
+      "maxDuration": 300
     },
     "api/cron.js": {
       "maxDuration": 120
     },
     "api/daily.js": {
-      "maxDuration": 120
+      "maxDuration": 300
     },
     "api/daily-fashion.js": {
-      "maxDuration": 120
+      "maxDuration": 300
     },
     "api/daily-yogo.js": {
-      "maxDuration": 120
+      "maxDuration": 300
     }
   }
 }

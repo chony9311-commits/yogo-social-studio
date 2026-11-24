@@ -188,13 +188,14 @@ async function uploadImage(day,postId,owner,channel,n,jpeg){
   if(!r.ok)throw new Error("Image upload "+(n+1)+" error "+r.status+": "+(await r.text()).slice(0,110));
   return base()+"/storage/v1/object/public/studio-media/"+path;
 }
-async function generateOne(channel,day,font){
+async function generateOne(channel,day,font,{premium=false}={}){
   const owner=OWNER();
   const before=await supabase("/rest/v1/studio_posts?owner_id=eq."+escUrl(owner)+"&channel=eq."+channel+
     "&generation_day=eq."+day+"&auto_generated=eq.true&select=id,status&limit=1",{admin:true});
   if(before.length)return {channel,outcome:"already_exists",id:before[0].id,status:before[0].status};
   const topic=dailyTopic(channel,day),draft=await copywriter(channel,topic);
-  const editorialArt=await generateArt(channel,topic);
+  const usePremium=premium||env("AUTO_PHOTO_ENABLED")==="true";
+  const editorialArt=usePremium?null:await generateArt(channel,topic);
   const row={
     owner_id:owner,channel,title:draft.title,hook:draft.hook,caption:draft.caption,
     slides:draft.slides,image_urls:[],source_links:[],disclosure_required:false,
@@ -211,10 +212,15 @@ async function generateOne(channel,day,font){
   }
   const post=rows?.[0];if(!post?.id)throw new Error("New draft insert missing id");
   try{
-    const urls=[];
-    for(let i=0;i<6;i++){
-      const image=await jpegSlide(channel,day,i,draft.slides[i],draft,font,editorialArt);
-      urls.push(await uploadImage(day,post.id,owner,channel,i,image));
+    let urls=[];
+    if(usePremium){
+      const {renderPremiumPost}=await import("./premium.js");
+      urls=await renderPremiumPost(post,owner);
+    }else{
+      for(let i=0;i<6;i++){
+        const image=await jpegSlide(channel,day,i,draft.slides[i],draft,font,editorialArt);
+        urls.push(await uploadImage(day,post.id,owner,channel,i,image));
+      }
     }
     if(urls.length!==6||urls.some(u=>!u.startsWith("https://")))throw new Error("JPEG validation incomplete");
     // No automatic publishing until separately approved server toggle is enabled.
@@ -240,7 +246,7 @@ export async function generateToday(channel){
   if(!["fashion","yogo"].includes(channel))throw new Error("Invalid channel");
   if(!adminConfigured())throw new Error("Admin DB configuration missing");
   const font=await getFont();
-  return generateOne(channel,KST_DATE(),font);
+  return generateOne(channel,KST_DATE(),font,{premium:true});
 }
 export default async function handler(req,res){
   try{

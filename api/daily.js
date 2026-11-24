@@ -7,7 +7,7 @@ import sharp from "sharp";
 import {adminConfigured,env,base,supabase,json} from "./studio.js";
 
 const OWNER=()=>env("STUDIO_OWNER_ID");
-const KST_DATE=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+const KST_DATE=()=>{const parts=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));return p.year+"-"+p.month+"-"+p.day};
 const TOPICS={
   fashion:[
     "날마다 같은 옷 입는 느낌을 줄이는 코디 조합법","니트와 셔츠 레이어링에서 주의할 비율",

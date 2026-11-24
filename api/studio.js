@@ -4,7 +4,8 @@ const env = (key) => process.env[key] || "";
 const base = () => env("SUPABASE_URL").replace(/\/+$/, "");
 const pubKey = () => env("SUPABASE_PUBLISHABLE_KEY") || env("SUPABASE_ANON_KEY");
 const secretKey = () => env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
-const configured = () => !!(base() && pubKey() && secretKey() && env("STUDIO_OWNER_ID"));
+const configured = () => !!(base() && pubKey() && env("STUDIO_OWNER_ID"));
+const adminConfigured = () => configured() && !!secretKey();
 const error = (message, status=400) => Object.assign(new Error(message), {status});
 const json = (res, status, data) => {
   res.setHeader("Cache-Control","no-store");
@@ -19,6 +20,7 @@ const metaId = (c) => env(channelId(c)) || env(c === "fashion" ? "FASHION_IG_USE
 const metaToken = (c) => env(tokenKey(c)) || env(c === "fashion" ? "FASHION_IG_ACCESS_TOKEN" : "YOGO_IG_ACCESS_TOKEN");
 async function supabase(path, {method="GET", bearer, admin=false, body, contentType="application/json", extraHeaders={}}={}) {
   if(!configured()) throw error("Supabase 관리자 연결이 아직 설정되지 않았습니다",503);
+  if(admin && !adminConfigured()) throw error("서버 발행용 비밀키가 아직 등록되지 않았습니다",503);
   const key = admin ? secretKey() : pubKey();
   const headers = {"apikey":key, ...extraHeaders};
   if (bearer) headers.Authorization = "Bearer " + bearer;
@@ -115,7 +117,7 @@ async function handler(req,res) {
     if(action==="status" && req.method==="GET")return json(res,200,{
       mode:configured()?"connected":"demo",authenticated:false,livePublishEnabled:env("LIVE_PUBLISH_ENABLED")==="true",
       ownerConfigured:!!env("STUDIO_OWNER_ID"),metaReady:{fashion:!!(metaToken("fashion")&&metaId("fashion")),yogo:!!(metaToken("yogo")&&metaId("yogo"))},
-      imageRendering:"client-preview",storageReady:configured(),aiReady:!!env("OPENAI_API_KEY")
+      imageRendering:"client-preview",storageReady:configured(),adminPublishingReady:adminConfigured(),aiReady:!!env("OPENAI_API_KEY")
     });
     if(action==="login" && req.method==="POST"){
       if(!configured())throw error("관리자 DB 연결 설정이 아직 없습니다",503);
@@ -160,7 +162,7 @@ async function handler(req,res) {
       const image=Buffer.from(b.base64.replace(/^data:image\/jpeg;base64,/,""),"base64");
       if(image.length<1000||image.length>5000000||image[0]!==255||image[1]!==216)throw error("유효한 JPEG 이미지가 아닙니다");
       const path=user.id+"/"+post.id+"/slide-"+(n+1)+"-"+Date.now()+".jpg";
-      await supabase("/storage/v1/object/studio-media/"+path,{method:"POST",admin:true,body:image,contentType:"image/jpeg"});
+      await supabase("/storage/v1/object/studio-media/"+path,{method:"POST",bearer:user.bearer,body:image,contentType:"image/jpeg"});
       const url=base()+"/storage/v1/object/public/studio-media/"+path;
       const urls=Array.isArray(post.image_urls)?post.image_urls.slice():[];
       urls[n]=url;
@@ -190,4 +192,4 @@ async function handler(req,res) {
   }catch(e){const status=Number(e.status)||500;json(res,status,{error:status>=500?"서버 설정 또는 연동 오류: "+e.message:e.message})}
 }
 export default handler;
-export {configured,env,base,supabase,inspect,metaToken,metaId,rows,error,json};
+export {configured,adminConfigured,env,base,supabase,inspect,metaToken,metaId,rows,error,json};

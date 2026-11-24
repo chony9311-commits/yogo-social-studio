@@ -1,3 +1,19 @@
+## 고퀄리티 매거진 생성 (운영 콘솔)
+
+이전에는 `AI 초안 만들기`가 글만 작성했고 `6장 생성·업로드`가 단순 그라데이션 캔버스만 생성했습니다. 새 **고퀄리티 매거진 6장 만들기**는 별도 시스템입니다.
+
+- 로그인된 관리자가 검수 전 `draft` 게시물을 선택하고 **고퀄리티 매거진 6장 만들기** 클릭
+- API 호출 비용이 있다는 확인을 거친 뒤 GPT Image API로 **서로 다른 사진 3장** 생성
+- 고정 템플릿의 글씨 대신 **사진/본문 배치가 서로 다른 6개 레이아웃**에 한글을 별도 렌더링해 OCR 오류를 줄임
+- 1080×1350 JPEG 여섯 장을 Supabase Storage에 올린 후 원본 게시물 `image_urls`를 교체
+- AI 이미지 표시 `ai_generated=true`, 검수 `verified=false`로 재설정. **Instagram 자동 게시 없음**
+- 정상 완성되면 운영 콘솔 이미지 미리보기에 최종 게시용 JPEG가 표시됨
+- API 모델 기본값 `gpt-image-2.5-flare`, 기본 `medium`; `OPENAI_IMAGE_MODEL`, `OPENAI_IMAGE_QUALITY`로 변경 가능
+- 생성 비용은 프로젝트에 연결된 OpenAI API 계정에 **별도 과금**됩니다. 실험 전 API 예산을 설정하세요.
+- `AUTO_GENERATION_ENABLED`, `AUTO_PUBLISH_ENABLED`, `LIVE_PUBLISH_ENABLED`는 여전히 별개로 제어됨
+
+매일 자동화는 `AUTO_PHOTO_ENABLED=true`일 때 이 프리미엄 렌더러로 생성하도록 연결했습니다. **자동 게시를 켜기 전에 반드시 실제 JPEG 6장과 첫 Instagram 발행을 검증하세요.**
+
 # YOGO Social Studio
 
 입는감각(@ipneun_gamgak)과 YOGO EDIT(@yogo.edit)의 6장 카드뉴스 편집·검수·예약·게시 시스템.

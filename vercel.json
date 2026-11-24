@@ -9,5 +9,13 @@
       "path": "/api/cron",
       "schedule": "0 11 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "api/studio.js": {
+      "maxDuration": 120
+    },
+    "api/cron.js": {
+      "maxDuration": 120
+    }
+  }
 }

@@ -210,6 +210,12 @@ async function generateOne(channel,day,font){
     throw e;
   }
 }
+export async function generateToday(channel){
+  if(!["fashion","yogo"].includes(channel))throw new Error("Invalid channel");
+  if(!adminConfigured())throw new Error("Admin DB configuration missing");
+  const font=await getFont();
+  return generateOne(channel,KST_DATE(),font);
+}
 export default async function handler(req,res){
   try{
     if(req.method!=="GET")return json(res,405,{error:"GET only"});

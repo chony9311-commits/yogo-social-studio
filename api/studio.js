@@ -129,6 +129,33 @@ async function handler(req,res) {
       return json(res,200,{access_token:session.access_token,expires_in:session.expires_in,user:{id:user.id,email:user.email}});
     }
     const user=await owner(req);
+    if(action==="instagram-check" && req.method==="GET"){
+      // Owner-only, read-only check. Never return stored tokens or raw Meta error bodies.
+      // A successful profile read confirms basic account access, NOT publishing permission.
+      const version=/^v\d+\.\d+$/.test(env("META_GRAPH_VERSION"))?env("META_GRAPH_VERSION"):"v27.0";
+      const accounts={};
+      for(const channel of ["fashion","yogo"]){
+        const id=metaId(channel),accessToken=metaToken(channel);
+        if(!id||!accessToken){accounts[channel]={ok:false,reason:"계정 ID 또는 토큰 미등록"};continue}
+        try{
+          const url=new URL("https://graph.instagram.com/"+version+"/"+encodeURIComponent(id));
+          url.searchParams.set("fields","id,username");
+          const resp=await fetch(url,{headers:{Authorization:"Bearer "+accessToken},signal:AbortSignal.timeout(12000),cache:"no-store"});
+          const data=await resp.json();
+          if(!resp.ok||data.error){
+            const code=Number(data?.error?.code)||null;
+            accounts[channel]={ok:false,reason:code===190?"토큰 만료·인증 오류":"Meta 계정 조회 실패",httpStatus:resp.status,metaErrorCode:code};
+            continue;
+          }
+          const returnedId=String(data?.id||"");
+          const matches=returnedId===String(id);
+          accounts[channel]={ok:matches,username:String(data?.username||"").slice(0,60),accountIdMatch:matches,reason:matches?"프로필 읽기 성공":"설정된 계정 ID와 토큰 계정 불일치"};
+        }catch(e){
+          accounts[channel]={ok:false,reason:e?.name==="TimeoutError"?"Meta 연결 시간 초과":"Meta API 연결 실패"};
+        }
+      }
+      return json(res,200,{accounts,readOnly:true,publishingPermissionVerified:false,livePublishEnabled:env("LIVE_PUBLISH_ENABLED")==="true",adminPublishingReady:adminConfigured()});
+    }
     if(action==="posts" && req.method==="GET"){
       const list=await rows("studio_posts?select=*&owner_id=eq."+encodeURIComponent(user.id)+"&order=created_at.desc&limit=100",user.bearer);
       return json(res,200,{posts:list});

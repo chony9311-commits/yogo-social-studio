@@ -173,7 +173,7 @@ async function handler(req,res) {
     const post=await getPost(b.id,user);
     if(action==="edit" && req.method==="POST"){
       if(!["draft","approved"].includes(post.status))throw error("예약·게시 상태의 글은 편집할 수 없습니다",409);
-      const allowed=["title","hook","caption","slides","landing_url","source_links","verified","disclosure_required","review_notes"];
+      const allowed=["title","hook","caption","slides","landing_url","source_links","verified","disclosure_required","ai_generated","review_notes"];
       const patch={status:"draft",verified:false};
       for(const k of allowed)if(Object.prototype.hasOwnProperty.call(b,k))patch[k]=b[k];
       if(patch.slides && (!Array.isArray(patch.slides) || patch.slides.length!==6))throw error("카드뉴스는 정확히 6장이어야 합니다");

@@ -93,11 +93,14 @@ async function makeSlide(channel,index,post,photo,fontData){
     .composite([{input:photoCrop,left:photoBox.x,top:photoBox.y}]).png().toBuffer();
   const cover=index===0,closing=index===5;
   const panelColor=cover?"rgba(243,240,233,0.91)":closing?"rgba(245,243,239,0.94)":tone.paper;
-  const headline=lines(copySafe(slide.title,90),p.w<600?9:13,4);
-  const description=lines(copySafe(slide.desc,160),p.w<600?14:28,4);
-  const titleSize=Math.min(cover?83:closing?72:77,
-    headline.length>52?53:headline.length>35?62:headline.length>26?70:83);
-  const top=p.y+(cover?305:closing?205:design.kind==="bottom"?80:design.kind==="top"?132:285);
+  const compact=["top","bottom","closing"].includes(design.kind);
+  const lineLimit=compact?3:4;
+  const chars=design.kind==="top"?17:design.kind==="bottom"?18:closing?19:p.w<600?9:12;
+  const headline=lines(copySafe(slide.title,68),chars,lineLimit);
+  const description=lines(copySafe(slide.desc,130),p.w<600?16:compact?28:25,compact?2:3);
+  const titleSize=design.kind==="top"?56:design.kind==="bottom"?58:closing?64:
+    p.w<600?64:cover?82:74;
+  const top=p.y+(cover?305:closing?194:design.kind==="bottom"?98:design.kind==="top"?142:285);
   const pad=p.w<600?51:73;
   const maxTextWidth=p.w-2*pad;
   const serifSpace=channel==="fashion"?"STYLE / NOTES":"THE SHOP EDIT";
@@ -108,8 +111,9 @@ async function makeSlide(channel,index,post,photo,fontData){
     place(text(masthead,{fontSize:34,color:tone.ink,letterSpacing:"0.5px"}),p.x+pad,p.y+55,maxTextWidth,60),
     place(layer([], {width:Math.min(maxTextWidth,230),height:2,backgroundColor:tone.accent}),p.x+pad,p.y+122,maxTextWidth,2),
     place(text(chapter,{fontSize:21,color:tone.accent,letterSpacing:"2px"}),p.x+pad,top-74,maxTextWidth,39),
-    place(text(headline,{fontSize:titleSize,lineHeight:1.28,color:tone.ink,letterSpacing:"-1.5px"}),p.x+pad,top,maxTextWidth,Math.min(560,Math.max(240,Math.ceil(headline.split("\n").length*titleSize*1.36)))),
-    place(text(description,{fontSize:p.w<600?27:34,lineHeight:1.65,color:"#52504D"}),p.x+pad,top+Math.min(450,Math.ceil(headline.split("\n").length*titleSize*1.36))+40,maxTextWidth,270),
+    place(text(headline,{fontSize:titleSize,lineHeight:1.24,color:tone.ink,letterSpacing:"-1.5px"}),p.x+pad,top,maxTextWidth,Math.ceil(headline.split("\n").length*titleSize*1.3)),
+    place(text(description,{fontSize:compact?29:p.w<600?27:34,lineHeight:compact?1.45:1.55,color:"#52504D"}),p.x+pad,
+      top+Math.ceil(headline.split("\n").length*titleSize*1.3)+(compact?18:34),maxTextWidth,compact?110:260),
     place(layer([
       text(serifSpace,{fontSize:19,color:tone.accent,letterSpacing:"2px"}),
       text(String(index+1).padStart(2,"0")+" / 06",{fontSize:20,color:tone.ink})

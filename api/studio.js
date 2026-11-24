@@ -117,7 +117,7 @@ async function handler(req,res) {
     if(action==="status" && req.method==="GET")return json(res,200,{
       mode:configured()?"connected":"demo",authenticated:false,livePublishEnabled:env("LIVE_PUBLISH_ENABLED")==="true",
       ownerConfigured:!!env("STUDIO_OWNER_ID"),metaReady:{fashion:!!(metaToken("fashion")&&metaId("fashion")),yogo:!!(metaToken("yogo")&&metaId("yogo"))},
-      imageRendering:"client-preview",storageReady:configured(),adminPublishingReady:adminConfigured(),manualPublishEnabled:env("MANUAL_PUBLISH_ENABLED")==="true",autoGenerationEnabled:env("AUTO_GENERATION_ENABLED")==="true",autoPublishEnabled:env("AUTO_PUBLISH_ENABLED")==="true"&&env("LIVE_PUBLISH_ENABLED")==="true",aiReady:!!env("OPENAI_API_KEY")
+      imageRendering:"client-preview",storageReady:configured(),adminPublishingReady:adminConfigured(),manualPublishEnabled:env("MANUAL_PUBLISH_ENABLED")==="true",autoGenerationEnabled:env("AUTO_GENERATION_ENABLED")==="true",autoPublishEnabled:env("AUTO_PUBLISH_ENABLED")==="true"&&env("LIVE_PUBLISH_ENABLED")==="true",autoPhotoEnabled:env("AUTO_PHOTO_ENABLED")==="true",aiReady:!!env("OPENAI_API_KEY")
     });
     if(action==="login" && req.method==="POST"){
       if(!configured())throw error("관리자 DB 연결 설정이 아직 없습니다",503);

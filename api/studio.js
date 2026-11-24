@@ -167,8 +167,8 @@ async function handler(req,res) {
       return json(res,200,{post:await updatePost(post.id,{image_urls:urls,verified:false},user),image_url:url});
     }
     if(action==="approve" && req.method==="POST"){
-      const candidate={...post,verified:true};
-      const errors=inspect(candidate,{requireImages:true});
+      if(!post.verified)throw error("원고·이미지·출처를 검수 완료로 확인해 주세요",422);
+      const errors=inspect(post,{requireImages:true});
       if(errors.length)throw error(errors.join(" / "),422);
       if(post.status!=="draft")throw error("초안만 승인할 수 있습니다",409);
       return json(res,200,{post:await updatePost(post.id,{verified:true,status:"approved"},user)});

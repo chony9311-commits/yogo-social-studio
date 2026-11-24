@@ -36,7 +36,7 @@ export async function publishCarousel(post){
     }
     if(!ready)throw new Error("Meta child processing timeout; inspect Instagram before retry");
   }
-  const parent=await graph("POST",accountId+"/media",token,{media_type:"CAROUSEL",children:children.join(","),caption:post.caption});
+  const parent=await graph("POST",accountId+"/media",token,{media_type:"CAROUSEL",children:children.join(","),caption:post.caption,...(post.ai_generated?{is_ai_generated:"true"}:{})});
   for(let n=0;n<12;n++){
     const status=await graph("GET",parent.id,token,{fields:"status_code"});
     if(status.status_code==="FINISHED")break;

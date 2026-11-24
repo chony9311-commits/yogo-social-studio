@@ -1,4 +1,4 @@
-import {configured,env,base,supabase,inspect,metaToken,metaId,json} from "./studio.js";
+import {configured,adminConfigured,env,base,supabase,inspect,metaToken,metaId,json} from "./studio.js";
 const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
 const version = () => /^v\d+\.\d+$/.test(env("META_GRAPH_VERSION"))? env("META_GRAPH_VERSION") : "v27.0";
 async function graph(method,path,token,params={}) {
@@ -49,7 +49,7 @@ export default async function handler(req,res){
   try{
     if(req.method!=="GET")return json(res,405,{error:"GET only"});
     if(!env("CRON_SECRET") || req.headers.authorization!=="Bearer "+env("CRON_SECRET"))return json(res,401,{error:"Cron authorization failed"});
-    if(!configured())return json(res,503,{error:"Studio Supabase configuration incomplete"});
+    if(!adminConfigured())return json(res,503,{error:"Studio publishing admin configuration incomplete"});
     if(env("LIVE_PUBLISH_ENABLED")!=="true")return json(res,200,{enabled:false,published:0,message:"실게시 기능 OFF — 아무것도 발행하지 않음"});
     const now=new Date().toISOString();
     const params="studio_posts?select=*&owner_id=eq."+encodeURIComponent(env("STUDIO_OWNER_ID"))+"&status=eq.scheduled&scheduled_at=lte."+encodeURIComponent(now)+"&order=scheduled_at.asc&limit=10";

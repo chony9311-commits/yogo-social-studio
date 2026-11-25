@@ -18,6 +18,33 @@ const channelId = (c) => c === "fashion" ? "INSTAGRAM_FASHION_ID" : "INSTAGRAM_Y
 const tokenKey = (c) => c === "fashion" ? "INSTAGRAM_FASHION_TOKEN" : "INSTAGRAM_YOGO_TOKEN";
 const metaId = (c) => env(channelId(c)) || env(c === "fashion" ? "FASHION_IG_USER_ID" : "YOGO_IG_USER_ID");
 const metaToken = (c) => env(tokenKey(c)) || env(c === "fashion" ? "FASHION_IG_ACCESS_TOKEN" : "YOGO_IG_ACCESS_TOKEN");
+// Read-only Instagram Login token check. This runs before any irreversible publish request.
+// Never return or log credentials, and never claim a token is valid merely because it is stored.
+async function verifyInstagramAccount(channel) {
+  const id=metaId(channel),token=metaToken(channel);
+  if(!id||!token)return {ok:false,reason:"해당 계정의 Instagram ID 또는 액세스 토큰이 등록되지 않았습니다"};
+  if(!/^\d{8,25}$/.test(id))return {ok:false,reason:"Instagram 계정 ID 형식을 확인해 주세요"};
+  if(/^\d+$/.test(token.trim())||token.length<40||token.trim()!==token||/[\s"'<>]/.test(token))
+    return {ok:false,reason:"Instagram 토큰 형식이 잘못됐습니다. 숫자 계정 ID 대신 Meta에서 발급한 긴 액세스 토큰 원문을 등록해 주세요"};
+  try{
+    const version=/^v\d+\.\d+$/.test(env("META_GRAPH_VERSION"))?env("META_GRAPH_VERSION"):"v27.0";
+    const url=new URL("https://graph.instagram.com/"+version+"/"+encodeURIComponent(id));
+    url.searchParams.set("fields","id,username");
+    const response=await fetch(url,{headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(12500),cache:"no-store"});
+    let data={};try{data=await response.json()}catch{}
+    const code=Number(data.error?.code)||null;
+    if(!response.ok||data.error){
+      const reason=code===190||response.status===401
+        ?"Instagram 토큰 인증 실패. Meta 개발자 콘솔에서 입는감각 토큰을 재발급한 뒤 Vercel의 INSTAGRAM_FASHION_TOKEN 값을 교체해 주세요"
+        :"Meta 계정 조회 실패. Meta 앱의 권한과 계정 연결을 확인해 주세요";
+      return {ok:false,reason,httpStatus:response.status,metaErrorCode:code};
+    }
+    if(String(data.id)!==String(id))return {ok:false,reason:"토큰 소유 계정과 등록된 Instagram 계정 ID가 서로 달라요",accountIdMatch:false};
+    return {ok:true,username:String(data.username||"").slice(0,60),accountIdMatch:true};
+  }catch(e){
+    return {ok:false,reason:e?.name==="TimeoutError"?"Meta API 연결 시간 초과. 게시하지 않았습니다":"Meta 계정 인증 요청 실패. 게시하지 않았습니다"};
+  }
+}
 async function supabase(path, {method="GET", bearer, admin=false, body, contentType="application/json", extraHeaders={}}={}) {
   if(!configured()) throw error("Supabase 관리자 연결이 아직 설정되지 않았습니다",503);
   if(admin && !adminConfigured()) throw error("서버 발행용 비밀키가 아직 등록되지 않았습니다",503);
@@ -130,30 +157,10 @@ async function handler(req,res) {
     }
     const user=await owner(req);
     if(action==="instagram-check" && req.method==="GET"){
-      // Owner-only, read-only check. Never return stored tokens or raw Meta error bodies.
-      // A successful profile read confirms basic account access, NOT publishing permission.
-      const version=/^v\d+\.\d+$/.test(env("META_GRAPH_VERSION"))?env("META_GRAPH_VERSION"):"v27.0";
-      const accounts={};
-      for(const channel of ["fashion","yogo"]){
-        const id=metaId(channel),accessToken=metaToken(channel);
-        if(!id||!accessToken){accounts[channel]={ok:false,reason:"계정 ID 또는 토큰 미등록"};continue}
-        try{
-          const url=new URL("https://graph.instagram.com/"+version+"/"+encodeURIComponent(id));
-          url.searchParams.set("fields","id,username");
-          const resp=await fetch(url,{headers:{Authorization:"Bearer "+accessToken},signal:AbortSignal.timeout(12000),cache:"no-store"});
-          const data=await resp.json();
-          if(!resp.ok||data.error){
-            const code=Number(data?.error?.code)||null;
-            accounts[channel]={ok:false,reason:code===190?"토큰 만료·인증 오류":"Meta 계정 조회 실패",httpStatus:resp.status,metaErrorCode:code};
-            continue;
-          }
-          const returnedId=String(data?.id||"");
-          const matches=returnedId===String(id);
-          accounts[channel]={ok:matches,username:String(data?.username||"").slice(0,60),accountIdMatch:matches,reason:matches?"프로필 읽기 성공":"설정된 계정 ID와 토큰 계정 불일치"};
-        }catch(e){
-          accounts[channel]={ok:false,reason:e?.name==="TimeoutError"?"Meta 연결 시간 초과":"Meta API 연결 실패"};
-        }
-      }
+      const accounts={
+        fashion:await verifyInstagramAccount("fashion"),
+        yogo:await verifyInstagramAccount("yogo")
+      };
       return json(res,200,{accounts,readOnly:true,publishingPermissionVerified:false,livePublishEnabled:env("LIVE_PUBLISH_ENABLED")==="true",adminPublishingReady:adminConfigured()});
     }
     if(action==="posts" && req.method==="GET"){
@@ -277,6 +284,8 @@ async function handler(req,res) {
       const issues=inspect(post,{requireImages:true});if(issues.length)throw error(issues.join(" / "),422);
       const tokenReady=!!(metaId(post.channel)&&metaToken(post.channel));
       if(!tokenReady)throw error("선택한 인스타 계정의 토큰 또는 ID가 없습니다",503);
+      const check=await verifyInstagramAccount(post.channel);
+      if(!check.ok)throw error("게시 전 Instagram 연결 확인 실패: "+check.reason,422);
       const claimed=await updatePost(post.id,{status:"publishing",error_message:null},user,"&status=eq.approved");
       try{
         // Dynamic import prevents cron from being run on ordinary editor requests.

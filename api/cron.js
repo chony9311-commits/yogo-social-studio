@@ -2,7 +2,9 @@ import {configured,adminConfigured,env,base,supabase,inspect,metaToken,metaId,js
 const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
 const version = () => /^v\d+\.\d+$/.test(env("META_GRAPH_VERSION"))? env("META_GRAPH_VERSION") : "v27.0";
 async function graph(method,path,token,params={}) {
-  const url=new URL("https://graph.instagram.com/"+version()+"/"+path);
+  // Unified Login EAA tokens use Facebook Graph; Instagram Login IGAA tokens use Instagram Graph.
+  const host=token.startsWith("EAA")?"graph.facebook.com":"graph.instagram.com";
+  const url=new URL("https://"+host+"/"+version()+"/"+path);
   const headers={Authorization:"Bearer "+token};
   const form=new URLSearchParams();
   for(const [k,v] of Object.entries(params))form.set(k,String(v));

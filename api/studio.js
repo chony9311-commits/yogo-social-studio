@@ -203,6 +203,38 @@ async function handler(req,res) {
       urls[n]=url;
       return json(res,200,{post:await updatePost(post.id,{image_urls:urls,verified:false},user),image_url:url});
     }
+    if(action==="upload-zip" && req.method==="POST"){
+      if(post.status!=="draft")throw error("초안 상태에서만 이미지 업로드할 수 있습니다",409);
+      if(typeof b.zip_base64!=="string"||b.zip_base64.length>5600000)throw error("ZIP 파일은 4MB 이하만 지원합니다",413);
+      const encoded=b.zip_base64.replace(/^data:(?:application\/(?:zip|x-zip-compressed)|application\/octet-stream);base64,/i,"");
+      if(!/^[A-Za-z0-9+/=]+$/.test(encoded))throw error("ZIP base64 형식 오류");
+      const binary=Buffer.from(encoded,"base64");
+      if(binary.length<4000||binary.length>4000000||binary.subarray(0,2).toString()!=="PK")throw error("4MB 이하의 ZIP 파일을 선택해 주세요",422);
+      const {unzipSync}=await import("fflate");
+      const sharp=(await import("sharp")).default;
+      let contents;try{contents=unzipSync(new Uint8Array(binary))}catch{throw error("ZIP 압축 해제 실패",422)}
+      const names=Object.keys(contents).filter(x=>!x.endsWith("/"));
+      if(names.length>16)throw error("ZIP에 파일이 너무 많습니다",422);
+      const pictures=[];
+      for(let i=1;i<=6;i++){
+        const file=names.find(x=>x===String(i).padStart(2,"0")+".jpg");
+        if(!file)throw error(String(i).padStart(2,"0")+".jpg 파일이 ZIP 안에 없습니다",422);
+        const bytes=Buffer.from(contents[file]);
+        if(bytes.length<1000||bytes.length>5000000||bytes[0]!==255||bytes[1]!==216)throw error(file+"은 유효한 JPEG가 아닙니다",422);
+        const md=await sharp(bytes).metadata();
+        if(md.width!==1080||md.height!==1350||md.format!=="jpeg")throw error(file+"의 해상도는 1080×1350이어야 합니다",422);
+        pictures.push(bytes);
+      }
+      const urls=[];
+      for(let i=0;i<6;i++){
+        const storagePath=user.id+"/"+post.id+"/editorial-"+String(i+1).padStart(2,"0")+"-"+Date.now()+".jpg";
+        await supabase("/storage/v1/object/studio-media/"+storagePath,{
+          method:"POST",bearer:user.bearer,body:pictures[i],contentType:"image/jpeg"});
+        urls.push(base()+"/storage/v1/object/public/studio-media/"+storagePath);
+      }
+      const updated=await updatePost(post.id,{image_urls:urls,verified:false},user,"&status=eq.draft");
+      return json(res,200,{post:updated,images_ready:urls.length});
+    }
     if(action==="approve" && req.method==="POST"){
       if(!post.verified)throw error("원고·이미지·출처를 검수 완료로 확인해 주세요",422);
       const errors=inspect(post,{requireImages:true});

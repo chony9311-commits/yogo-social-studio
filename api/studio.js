@@ -28,7 +28,9 @@ async function verifyInstagramAccount(channel) {
     return {ok:false,reason:"Instagram 토큰 형식이 잘못됐습니다. 숫자 계정 ID 대신 Meta에서 발급한 긴 액세스 토큰 원문을 등록해 주세요"};
   try{
     const version=/^v\d+\.\d+$/.test(env("META_GRAPH_VERSION"))?env("META_GRAPH_VERSION"):"v27.0";
-    const url=new URL("https://graph.instagram.com/"+version+"/"+encodeURIComponent(id));
+    // Unified Login (EAA...) -> Facebook Graph; Instagram Login (IGAA...) -> Instagram Graph.
+    const host=token.startsWith("EAA")?"graph.facebook.com":"graph.instagram.com";
+    const url=new URL("https://"+host+"/"+version+"/"+encodeURIComponent(id));
     url.searchParams.set("fields","id,username");
     const response=await fetch(url,{headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(12500),cache:"no-store"});
     let data={};try{data=await response.json()}catch{}

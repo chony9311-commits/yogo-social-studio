@@ -12,6 +12,9 @@
 <section class="pane"><div class="paneHead">CONTENT QUEUE</div><div class="paneBody"><div class="tabs"><button data-channel="fashion" class="active">입는감각</button><button data-channel="yogo">YOGO EDIT</button></div><button class="primary wide" id="new">＋ 새 6장 초안</button><button class="wide" id="ai" style="margin-top:6px">✦ AI 원고 초안만 만들기</button><button class="wide" id="dailyNow" style="margin-top:6px">⚡ 오늘의 6장 자동 생성 테스트</button><div class="small muted" id="autoStatus" style="margin:8px 0 12px;line-height:1.8">자동 제작 상태 확인 중…</div><div class="small muted" style="margin:19px 0 8px">게시물 <span id="count">0</span>개</div><div id="posts"></div><button class="wide" id="reload">↻ 목록 새로고침</button><button class="wide" id="igCheck" style="margin-top:7px">◎ Instagram 연결 실제 점검</button><div class="small muted" id="igResult" aria-live="polite" style="margin-top:9px;line-height:1.7">로그인 후 계정 인증을 확인할 수 있어요. 점검 과정에서 게시물은 생성되지 않습니다.</div></div></section>
 <section class="pane"><div class="paneHead">CAROUSEL PREVIEW — 1080 × 1350</div><div class="posterOuter"><div class="poster" id="poster"><img id="uploadedPreview" alt="실제 게시될 완성 카드뉴스" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;z-index:2"><div class="posterContent"><div class="brandline" id="visualBrand"></div><div class="ptag" id="visualTag"></div><h2 id="visualTitle"></h2><p id="visualDesc"></p><div class="bottom"><span id="visualFoot"></span><span id="visualNum"></span></div></div></div></div><div class="posterTools"><div class="row"><button id="prev">← 이전 장</button><div class="slideSelector" id="slideNum">01 / 06</div><button id="next">다음 장 →</button></div><div class="row"><button id="saveJpg">현재 장 JPEG 저장</button><button id="upload">현재 장 서버 업로드</button></div><button id="premiumRender" class="wide primary" style="padding:17px 12px;margin:7px 0 4px;background:#25282A;border-color:#25282A;font-size:13px">✦ 고퀄리티 매거진 6장 만들기</button><p class="small muted" id="premiumHelp" style="margin:0 0 12px">실제 라이프스타일 감성의 AI 사진 3장 + 서로 다른 6가지 편집 레이아웃 · 이미지 API 사용료 발생 · 자동 게시 없음</p><button id="uploadAll" class="wide">기본 템플릿 6장 (간단 버전)</button>
 <div style="border:1px dashed #cdbbc8;border-radius:12px;padding:14px;margin-top:12px;background:#fcf9fc">
+  <label for="zipFile">완성된 카드뉴스 ZIP (01.jpg ~ 06.jpg)<input type="file" id="zipFile" accept=".zip,application/zip,application/x-zip-compressed"></label>
+  <button id="uploadZip" class="wide primary" style="margin:7px 0 13px;background:#353b37;border-color:#353b37">📦 ZIP 파일 하나로 6장 등록</button>
+  <p class="small muted" id="zipProgress" aria-live="polite" style="margin:5px 0 12px">JPG 6장과 캡션이 포함된 압축파일 선택 · 인스타그램 게시와는 별개</p>
   <label for="finalFiles">완성된 고화질 JPEG 6장 (01.jpg ~ 06.jpg)<input type="file" id="finalFiles" accept="image/jpeg" multiple></label>
   <button id="uploadFinal" class="wide primary">✦ 최종 디자인 6장 업로드</button>
   <p class="small muted" id="uploadProgress" style="margin:9px 0 0">1080 × 1350 JPEG 6장을 선택하면 올바른 순서대로 서버에 업로드해요</p>
@@ -41,7 +44,7 @@ async function checkInstagram(){
     out.textContent=["fashion","yogo"].map(c=>{const x=r.accounts?.[c]||{};return (x.ok?"✓ ":"✕ ")+labels[c]+": "+(x.ok?"@"+(x.username||"사용자 확인")+" · 토큰 인증 성공":x.reason||"연결 실패")+(x.metaErrorCode?" (Meta "+x.metaErrorCode+")":"")}).join(" | ")+" · 게시 권한과 실제 발행은 별도 검증 필요";
   }catch(e){out.textContent="점검 실패: "+e.message}finally{btn.disabled=false}
 }
-async function reload(){try{const r=await data("/api/studio?action=posts");posts=r.posts;const list=posts.filter(x=>x.channel===channel);if(!list.some(x=>x.id===selectedId))selectedId=list[0]?.id||null;slide=0;render()}catch(e){toast(e.message)}}
+async function reload(){try{const r=await data("/api/studio?action=posts");posts=r.posts;const requested=new URLSearchParams(location.search).get("post");if(requested){const match=posts.find(x=>x.id===requested);if(match){channel=match.channel;selectedId=match.id}}const list=posts.filter(x=>x.channel===channel);if(!list.some(x=>x.id===selectedId))selectedId=list[0]?.id||null;slide=0;render()}catch(e){toast(e.message)}}
 async function call(action,b){try{const r=await data("/api/studio?action="+action,b);if(r.post){posts=posts.filter(x=>x.id!==r.post.id);posts.unshift(r.post);selectedId=r.post.id;render()}toast(action==="approve"?"검수 승인 완료":action==="schedule"?"예약 등록 완료":action==="publish-now"?"Instagram 실제 게시 완료":action==="upload"?"이미지 업로드 완료":"저장 완료");return r}catch(e){toast(e.message);throw e}}
 async function currentSave(){const item=p();if(!item)return;const patch={id:item.id,title:$("title").value,hook:$("hook").value,caption:$("caption").value,landing_url:$("landing").value||null,slides:item.slides.map((s,i)=>i===slide?{...s,title:$("slideTitle").value,desc:$("slideDesc").value}:s),disclosure_required:$("disclosure").checked,ai_generated:$("aiGenerated").checked,verified:$("verified").checked};return call("edit",patch)}
 function canvas(index){const item=p();const s=item.slides[index];const cn=document.createElement("canvas");cn.width=1080;cn.height=1350;const ctx=cn.getContext("2d");const g=ctx.createLinearGradient(100,0,920,1350);if(item.channel==="fashion"){g.addColorStop(0,"#f8f0eb");g.addColorStop(.6,"#ddc9bc");g.addColorStop(1,"#988085")}else{g.addColorStop(0,"#f7eef7");g.addColorStop(.6,"#dcc6dd");g.addColorStop(1,"#92759b")}ctx.fillStyle=g;ctx.fillRect(0,0,1080,1350);ctx.fillStyle="#302832";ctx.font="800 32px 'Noto Sans KR',sans-serif";ctx.fillText(item.channel==="fashion"?"입는감각  /  THE STYLE EDIT":"YOGO  /  SHOPPING EDIT",80,115);ctx.fillStyle="#8b6b87";ctx.font="700 31px 'Noto Sans KR',sans-serif";ctx.fillText(String(s.tag||"").slice(0,23),80,295);ctx.fillStyle="#302832";ctx.font="800 77px 'Noto Sans KR',sans-serif";let y=430;for(const ln of wrap(ctx,s.title,910)){ctx.fillText(ln,80,y);y+=105}ctx.font="400 35px 'Noto Sans KR',sans-serif";y+=40;for(const ln of wrap(ctx,s.desc||s.sub||"",900)){ctx.fillText(ln,80,y);y+=58}ctx.font="800 27px 'Noto Sans KR',sans-serif";ctx.fillText(item.channel==="fashion"?"FASHION NOTES":"SHOP SMARTER",80,1270);ctx.textAlign="right";ctx.fillText((index+1)+" / 6",985,1270);return cn}
@@ -83,6 +86,23 @@ $("premiumRender").onclick=async()=>{
   }finally{btn.textContent=previous;btn.disabled=false}
 };
 function fileAsDataURL(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("이미지 파일을 읽을 수 없습니다"));reader.readAsDataURL(file)})}
+$("uploadZip").onclick=async()=>{
+  const item=p();if(!item)return toast("왼쪽에서 게시물을 먼저 선택해 줘");
+  if(item.status!=="draft")return toast("초안 상태에서만 이미지 등록 가능해");
+  const file=$("zipFile").files?.[0];
+  if(!file)return toast("ZIP 파일을 선택해 줘");
+  if(!/\.zip$/i.test(file.name)||file.size>4000000)return toast("4MB 이하 ZIP 파일이어야 해");
+  const b=$("uploadZip");b.disabled=true;const old=b.textContent;
+  b.textContent="사진 6장 검사·서버 등록 중…";$("zipProgress").textContent="압축파일을 검사하고 Supabase에 업로드 중입니다";
+  try{
+    await currentSave();
+    const r=await data("/api/studio?action=upload-zip",{id:item.id,zip_base64:await fileAsDataURL(file)});
+    if(r.post){posts=posts.filter(x=>x.id!==r.post.id);posts.unshift(r.post);selectedId=r.post.id;slide=0;render()}
+    $("zipProgress").textContent="✓ "+r.images_ready+"장 업로드 완료 · 01~06 미리보기를 확인한 후 검수 승인해 줘";
+    $("zipFile").value="";toast("카드뉴스 6장 등록 완료");
+  }catch(e){$("zipProgress").textContent="업로드 실패: "+e.message;toast(e.message)}
+  finally{b.disabled=false;b.textContent=old}
+};
 $("uploadFinal").onclick=async()=>{
   const selected=p();if(!selected)return toast("왼쪽에서 게시물을 먼저 선택해 줘");
   if(selected.status!=="draft")return toast("완성 이미지는 초안 상태에서만 업로드할 수 있어");
